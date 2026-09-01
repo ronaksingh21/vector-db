@@ -30,5 +30,5 @@ class HNSW{
 
         int get_random_layer();
         std::vector<int> search_layer(const std::vector<float>& query, const std::vector<int>& entry_points, int layer, int ef);
-
+        void prune_neighbors(int node_id,int layer);
 };

@@ -29,37 +29,40 @@ int HNSW::get_random_layer(){
 }
 //compared to prior version, it is a bit slower, but improves correctness
 void HNSW::insert(int id, const std::vector<float>& vec) {
-    Node new_node = {id, vec, {}, get_random_layer()};
-    if(entry_point == -1){
+    int node_layer = get_random_layer();
+
+    if (entry_point == -1) {
+        data[id] = Node{id, vec, {}, node_layer};
         entry_point = id;
-        data[id] = new_node;
         return;
     }
 
-    Node& entry = data[entry_point];
+    int entry_layer = data[entry_point].current_layer;
+
+    // Must be in `data` before linking, so prune_neighbors can see its vector.
+    data[id] = Node{id, vec, {}, node_layer};
+
     std::vector<int> candidates = {entry_point};
 
-    // navigate from entry layer down to newnodes layer (ef=1 just find entry point)
-    for (int layer = entry.current_layer; layer > new_node.current_layer; layer--) {
-        candidates = search_layer(new_node.vec, candidates, layer, 1);
+    for (int layer = entry_layer; layer > node_layer; layer--) {
+        candidates = search_layer(vec, candidates, layer, 1);
     }
 
-    // from newnodes layer down to 0 connect at each layer
-    for (int layer = std::min(new_node.current_layer, entry.current_layer); layer >= 0; layer--) {
-        candidates = search_layer(new_node.vec, candidates, layer, ef_construction);
-        
+    for (int layer = std::min(node_layer, entry_layer); layer >= 0; layer--) {
+        candidates = search_layer(vec, candidates, layer, ef_construction);
+
         for (int i = 0; i < std::min(M, (int)candidates.size()); i++) {
             int neighbor_id = candidates[i];
-            new_node.neighbors_by_layer[layer].push_back(neighbor_id);
+            if (neighbor_id == id) continue;          // no self-loops
+            data[id].neighbors_by_layer[layer].push_back(neighbor_id);
             data[neighbor_id].neighbors_by_layer[layer].push_back(id);
+            prune_neighbors(neighbor_id, layer);
         }
     }
 
-    if (new_node.current_layer > entry.current_layer){
-        entry_point = id;
-    }
-    data[id] = new_node;
+    if (node_layer > entry_layer) entry_point = id;
 }
+
 
 std::vector<int> HNSW::search(const std::vector<float>& query, int k) {
     if(data.empty() || entry_point == -1){
@@ -132,10 +135,34 @@ std::vector<int> HNSW::search_layer(const std::vector<float>& query, const std::
         }
     }
     
+    // max-heap pops farthest-first, so flip to nearest-first:
+    // insert() takes the leading M entries as neighbors and needs the closest ones(claudius helped me debug :])
     std::vector<int> result_ids;
     while (!results.empty()) {
         result_ids.push_back(results.top().second);
         results.pop();
     }
+    std::reverse(result_ids.begin(), result_ids.end());
     return result_ids;
+}
+void HNSW::prune_neighbors(int node_id, int layer){
+    auto& neighbors = data[node_id].neighbors_by_layer[layer];
+
+    //layer 0 decides final recall, so it gets a looser cap
+    int max_conn = (layer == 0) ? 2*M : M;
+
+    if ((int) neighbors.size()<=max_conn){
+        return;
+    }
+    std::vector<std::pair<float, int>> distances;
+    for (int neighbor_id : neighbors) {
+        float dist = l2_distance(data[node_id].vec, data[neighbor_id].vec);
+        distances.push_back({dist, neighbor_id});
+    }
+    //we wanna keep the closest nodes
+    std::sort(distances.begin(), distances.end());
+    neighbors.clear();
+    for(int i =0; i<max_conn; i++){
+        neighbors.push_back(distances[i].second);
+    }
 }
