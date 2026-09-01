@@ -6,3 +6,4 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(include)
 
 add_executable(main src/main.cpp src/hnsw.cpp)
+add_executable(benchmark src/benchmark.cpp src/hnsw.cpp)

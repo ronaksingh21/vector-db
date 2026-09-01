@@ -3,7 +3,7 @@
 #include <cmath>
 #include<random>
 #include <algorithm>
-
+#include <set>
 HNSW::HNSW(int max_layers, int M, int ef_construction)
     : max_layers(max_layers), M(M), ef_construction(ef_construction){
     ml = 1.0/ std::log(2.0);
@@ -33,24 +33,32 @@ void HNSW::insert(int id, const std::vector<float>& vec) {
         data[id]= new_node;
         return;
     }
+
     Node& entry = data[entry_point];
-    for( int layer = entry.current_layer; layer>= new_node.current_layer; layer--){
-        std::vector <std::pair<float,int>> distances;
-        for (auto& [node_id,node] : data){
-            if(node.current_layer>= layer){
+    std::vector<int> candidates = {entry_point};
+
+    for (int layer = entry.current_layer; layer >= new_node.current_layer; layer--) {
+        std::vector<std::pair<float, int>> distances;
+        
+        // Only check nodes at this layer (don't iterate ALL nodes in data)
+        for (auto& [node_id, node] : data) {
+            if (node.current_layer >= layer) {
                 float dist = l2_distance(new_node.vec, node.vec);
-                distances.push_back({dist,node_id});
+                distances.push_back({dist, node_id});
             }
         }
+        
         std::sort(distances.begin(), distances.end());
-    
-        // connect to m closest neighbors bidirectionally
-        for (int i = 0; i < std::min(M, (int)distances.size()); i++) {
-            int neighbor_id = distances[i].second;
-            new_node.neighbors_by_layer[layer].push_back(neighbor_id);
-            data[neighbor_id].neighbors_by_layer[layer].push_back(id);
+        
+        if (layer <= new_node.current_layer && layer >= 0) {
+            for (int i = 0; i < std::min(M, (int)distances.size()); i++) {
+                int neighbor_id = distances[i].second;
+                new_node.neighbors_by_layer[layer].push_back(neighbor_id);
+                data[neighbor_id].neighbors_by_layer[layer].push_back(id);
+            }
         }
     }
+
     if (new_node.current_layer > entry.current_layer){
         entry_point = id;
     }
@@ -78,15 +86,18 @@ std::vector<int> HNSW::search(const std::vector<float>& query, int k) {
         std::sort(distances.begin(), distances.end());
 
         candidates.clear();
-        if(!distances.empty()){
-            candidates.push_back(distances[0].second);
+        // Keep top M candidates, not just 1
+        for (int i = 0; i < std::min(M, (int)distances.size()); i++) {
+            candidates.push_back(distances[i].second);
         }
     }
+    // At layer 0, calculate distances for candidates only, before it was all nodes al layer 0
     std::vector<std::pair<float, int>> final_distances;
-    for(auto& [node_id, node] : data) {
-        float dist = l2_distance(query, node.vec);
-        final_distances.push_back({dist, node_id});
+    for (int candidate_id : candidates) {
+        float dist = l2_distance(query, data[candidate_id].vec);
+        final_distances.push_back({dist, candidate_id});
     }
+    std::sort(final_distances.begin(), final_distances.end());
 
     std::sort(final_distances.begin(), final_distances.end());
 
@@ -97,4 +108,54 @@ std::vector<int> HNSW::search(const std::vector<float>& query, int k) {
     
     return result;
 
+
+    
+}
+//beam search
+std::vector<int> HNSW::search_layer(const std::vector<float>& query, const std::vector<int>& entry_points, int layer, int ef) {
+    std::set<int> visited(entry_points.begin(), entry_points.end());
+    std::vector<std::pair<float, int>> candidates;  // min-heap behavior via sort
+    std::vector<std::pair<float, int>> results;
+    
+    for (int ep : entry_points) {
+        float dist = l2_distance(query, data[ep].vec);
+        candidates.push_back({dist, ep});
+        results.push_back({dist, ep});
+    }
+    std::sort(candidates.begin(), candidates.end());
+    
+    while (!candidates.empty()) {
+        auto [dist, current] = candidates.front();
+        candidates.erase(candidates.begin());
+        
+        // Stop if current is farther than our worst result (and we have enough results)
+        if (results.size() >= ef && dist > results.back().first) {
+            break;
+        }
+        
+        // Explore neighbors
+        if (data[current].neighbors_by_layer.count(layer)) {
+            for (int neighbor : data[current].neighbors_by_layer[layer]) {
+                if (visited.count(neighbor)) continue;
+                visited.insert(neighbor);
+                
+                float d = l2_distance(query, data[neighbor].vec);
+                results.push_back({d, neighbor});
+                candidates.push_back({d, neighbor});
+            }
+        }
+        
+        std::sort(candidates.begin(), candidates.end());
+        std::sort(results.begin(), results.end());
+        
+        if (results.size() > ef) {
+            results.resize(ef);
+        }
+    }
+    
+    std::vector<int> result_ids;
+    for (auto& [d, id] : results) {
+        result_ids.push_back(id);
+    }
+    return result_ids;
 }

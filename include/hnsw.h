@@ -29,6 +29,6 @@ class HNSW{
         float l2_distance(const std::vector<float>& a, const std::vector<float>& b);
 
         int get_random_layer();
-        std::vector<int> search_layer(const std::vector<float>& query, const std::vector<int> & candidates, int layer);
+        std::vector<int> search_layer(const std::vector<float>& query, const std::vector<int>& entry_points, int layer, int ef);
 
 };
