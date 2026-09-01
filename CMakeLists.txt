@@ -7,3 +7,4 @@ include_directories(include)
 
 add_executable(main src/main.cpp src/hnsw.cpp)
 add_executable(benchmark src/benchmark.cpp src/hnsw.cpp)
+add_compile_options($<$<CONFIG:Release>:/O2> $<$<CONFIG:Release>:/arch:AVX2>)
