@@ -56,3 +56,45 @@ void HNSW::insert(int id, const std::vector<float>& vec) {
     }
     data[id] = new_node;
 }
+
+std::vector<int> HNSW::search(const std::vector<float>& query, int k) {
+    if(data.empty() || entry_point == -1){
+        return {};
+    }
+
+    std::vector<int> candidates;
+    candidates.push_back(entry_point);
+
+    Node& entry = data[entry_point];
+
+    for (int layer = entry.current_layer; layer>=0; layer--){
+        std::vector<std::pair<float, int>> distances;
+
+        for(int candidate_id : candidates){
+            float dist = l2_distance(query, data[candidate_id].vec);
+            distances.push_back({dist, candidate_id});
+
+        }
+        std::sort(distances.begin(), distances.end());
+
+        candidates.clear();
+        if(!distances.empty()){
+            candidates.push_back(distances[0].second);
+        }
+    }
+    std::vector<std::pair<float, int>> final_distances;
+    for(auto& [node_id, node] : data) {
+        float dist = l2_distance(query, node.vec);
+        final_distances.push_back({dist, node_id});
+    }
+
+    std::sort(final_distances.begin(), final_distances.end());
+
+    std::vector<int> result;
+    for (int i = 0; i < std::min(k, (int)final_distances.size()); i++) {
+        result.push_back(final_distances[i].second);
+    }
+    
+    return result;
+
+}
