@@ -53,3 +53,73 @@ make
 ## Dataset
 
 Benchmarked using [SIFT1M](https://huggingface.co/datasets/qbo-odp/sift1m) (128-dimensional SIFT descriptors).
+
+
+
+## Python Bindings & REST API
+
+This project includes Python bindings (via pybind11) and a Flask REST API for interacting with the HNSW index over HTTP.
+
+### Setup
+
+Install Python dependencies:
+```bash
+pip install pybind11 flask requests
+```
+
+Build the Python module (from repo root):
+```powershell
+cmake -S . -B build -Dpybind11_DIR="<path_to_your_pybind11_cmake_dir>"
+cmake --build build --config Release
+```
+
+Find your pybind11 CMake dir with:
+```bash
+python -c "import pybind11; print(pybind11.get_cmake_dir())"
+```
+
+### Running the API
+
+The compiled module (`hnsw_module.*.pyd` or `.so`) will be in `build/Release/` (Windows) or `build/` (Linux/Mac).
+
+```bash
+cd python
+python api.py
+```
+
+Server runs on `http://127.0.0.1:5000`.
+
+### API Endpoints
+
+**POST /insert**
+```json
+{
+  "id": 1,
+  "vector": [0.1, 0.2, ...]
+}
+```
+
+**POST /search**
+```json
+{
+  "vector": [0.1, 0.2, ...],
+  "k": 10
+}
+```
+
+Returns:
+```json
+{
+  "results": [id1, id2, ...]
+}
+```
+
+### Example
+
+```python
+import requests
+
+requests.post('http://127.0.0.1:5000/insert', json={'id': 1, 'vector': [1.0, 0.0, 0.0]})
+response = requests.post('http://127.0.0.1:5000/search', json={'vector': [0.95, 0.05, 0.0], 'k': 5})
+print(response.json())
+```
