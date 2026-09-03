@@ -76,7 +76,21 @@ int main() {
     auto query_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     
     double avg_recall = total_recall / query_vectors.size();
-    
+    std::cout << "\nSelf-query recall check...\n";
+    int self_query_tests = 100;
+    int self_query_hits = 0;
+
+    for (int i = 0; i < self_query_tests; i++) {
+        int test_id = i * (base_vectors.size() / self_query_tests);  // spread across the dataset
+        auto results = index.search(base_vectors[test_id], 1);
+        
+        if (!results.empty() && results[0] == test_id) {
+            self_query_hits++;
+        }
+    }
+
+    std::cout << "Self-query hit rate: " << self_query_hits << "/" << self_query_tests 
+            << " (" << (100.0 * self_query_hits / self_query_tests) << "%)\n";
     std::cout << "Total query time: " << query_time << "ms\n";
     std::cout << "Avg per query: " << (query_time / (double)query_vectors.size()) << "ms\n";
     std::cout << "Average Recall@" << k << ": " << (avg_recall * 100) << "%\n";
