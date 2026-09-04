@@ -12,14 +12,14 @@ HNSW::HNSW(int max_layers, int M, int ef_construction)
     
 
 }
-float HNSW::l2_distance(const std::vector<float>& a, const std::vector<float>& b){
-        float sum = 0;
-        for(int i =0; i<a.size();i++){
-            float d =a[i] - b[i];
-            sum+= d*d;
-        }
-        return std::sqrt(sum);
+float HNSW::l2_distance(const std::vector<int8_t>& a, const std::vector<int8_t>& b) {
+    int sum = 0;
+    for (size_t i = 0; i < a.size(); i++) {
+        int d = (int)a[i] - (int)b[i];
+        sum += d * d;
     }
+    return std::sqrt((float)sum);
+}
 int HNSW::get_random_layer(){
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -29,27 +29,26 @@ int HNSW::get_random_layer(){
 }
 //compared to prior version, it is a bit slower, but improves correctness
 void HNSW::insert(int id, const std::vector<float>& vec) {
+    std::vector<int8_t> qvec = quantize(vec);  // quantize immediately
     int node_layer = get_random_layer();
 
     if (entry_point == -1) {
-        data[id] = Node{id, vec, {}, node_layer};
+        data[id] = Node{id, qvec, {}, node_layer};  // store quantized
         entry_point = id;
         return;
     }
 
     int entry_layer = data[entry_point].current_layer;
 
-    // Must be in `data` before linking, so prune_neighbors can see its vector.
-    data[id] = Node{id, vec, {}, node_layer};
+    data[id] = Node{id, qvec, {}, node_layer};  // store quantized
 
     std::vector<int> candidates = {entry_point};
 
     for (int layer = entry_layer; layer > node_layer; layer--) {
-        candidates = search_layer(vec, candidates, layer, 1);
+        candidates = search_layer(qvec, candidates, layer, 1);  // pass quantized
     }
-
     for (int layer = std::min(node_layer, entry_layer); layer >= 0; layer--) {
-        candidates = search_layer(vec, candidates, layer, ef_construction);
+        candidates = search_layer(qvec, candidates, layer, ef_construction);
 
         for (int i = 0; i < std::min(M, (int)candidates.size()); i++) {
             int neighbor_id = candidates[i];
@@ -68,18 +67,18 @@ std::vector<int> HNSW::search(const std::vector<float>& query, int k) {
     if(data.empty() || entry_point == -1){
         return {};
     }
+    std::vector<int8_t> qquery = quantize(query);  // quantize immediately
 
     std::vector<int> candidates = {entry_point};
     Node& entry = data[entry_point];
 
     for (int layer = entry.current_layer; layer >= 0; layer--){
-        candidates = search_layer(query, candidates, layer, std::max(k, ef_construction));
+        candidates = search_layer(qquery, candidates, layer, std::max(k, ef_construction));  // pass quantized
     }
 
-    // Sort final candidates by distance, return top k
     std::vector<std::pair<float, int>> final_distances;
     for (int candidate_id : candidates) {
-        float dist = l2_distance(query, data[candidate_id].vec);
+        float dist = l2_distance(qquery, data[candidate_id].vec);  // both int8_t now
         final_distances.push_back({dist, candidate_id});
     }
     std::sort(final_distances.begin(), final_distances.end());
@@ -93,7 +92,7 @@ std::vector<int> HNSW::search(const std::vector<float>& query, int k) {
 }
 
 //update to use priority queue
-std::vector<int> HNSW::search_layer(const std::vector<float>& query, const std::vector<int>& entry_points, int layer, int ef) {
+std::vector<int> HNSW::search_layer(const std::vector<int8_t>& query, const std::vector<int>& entry_points, int layer, int ef) {
     std::set<int> visited(entry_points.begin(), entry_points.end());
     
     // Min-heap
@@ -113,7 +112,7 @@ std::vector<int> HNSW::search_layer(const std::vector<float>& query, const std::
         candidates.pop();
         
         // Stop if current is farther than our worst result (and we have enough)
-        if (results.size() >= ef && dist > results.top().first) {
+        if ((int)results.size() >= ef && dist > results.top().first) {
             break;
         }
         
@@ -124,10 +123,10 @@ std::vector<int> HNSW::search_layer(const std::vector<float>& query, const std::
                 
                 float d = l2_distance(query, data[neighbor].vec);
                 
-                if (results.size() < ef || d < results.top().first) {
+                if ((int)results.size() < ef || d < results.top().first) {
                     candidates.push({d, neighbor});
                     results.push({d, neighbor});
-                    if (results.size() > ef) {
+                    if ((int)results.size() > ef) {
                         results.pop();  // Remove worst
                     }
                 }
@@ -165,4 +164,15 @@ void HNSW::prune_neighbors(int node_id, int layer){
     for(int i =0; i<max_conn; i++){
         neighbors.push_back(distances[i].second);
     }
+}
+
+
+std::vector<int8_t> HNSW::quantize(const std::vector<float>& vec) {
+    std::vector<int8_t> result(vec.size());
+    for (size_t i = 0; i < vec.size(); i++) {
+        float q = std::round(vec[i] * scale_factor);
+        // clamp: queries can fall outside the range the scale factor was fit to
+        result[i] = (int8_t)std::min(127.0f, std::max(-127.0f, q));
+    }
+    return result;
 }

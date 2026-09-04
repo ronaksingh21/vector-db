@@ -81,3 +81,15 @@ std::vector<std::vector<int>> compute_ground_truth(
 
     return gt;
 }
+
+
+float compute_scale_factor(const std::vector<std::vector<float>>& vectors) {
+    float max_abs = 0.0f;
+    for (const auto& vec : vectors) {
+        for (float val : vec) {
+            max_abs = std::max(max_abs, std::abs(val));
+        }
+    }
+    if (max_abs == 0.0f) return 1.0f;
+    return 127.0f / max_abs;
+}

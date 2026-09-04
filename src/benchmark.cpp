@@ -37,7 +37,17 @@ int main() {
             std::cout << "  Inserted " << (i + 1) << " vectors" << std::endl;
         }
     }
+    // Calculate actual memory used by vector storage
+    size_t total_vector_bytes = 0;
+    for (int i = 0; i < (int)base_vectors.size(); i++) {
+        total_vector_bytes += sizeof(int8_t) * 128;  // quantized: 128 bytes per vector
+    }
+    std::cout << "\nTotal vector storage: " << total_vector_bytes << " bytes ("
+            << (total_vector_bytes / 1024.0 / 1024.0) << " MB)\n";
 
+    size_t float_equivalent_bytes = base_vectors.size() * sizeof(float) * 128;
+    std::cout << "Float32 equivalent would be: " << float_equivalent_bytes << " bytes ("
+            << (float_equivalent_bytes / 1024.0 / 1024.0) << " MB)\n";
     auto end = std::chrono::high_resolution_clock::now();
     auto build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "Build time: " << build_time << "ms\n\n";
