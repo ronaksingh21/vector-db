@@ -1,4 +1,4 @@
-# Vector Database (HNSW) — C++
+# Vector Database (HNSW) C++
 
 A from-scratch implementation of Hierarchical Navigable Small World (HNSW) graphs for approximate nearest neighbor search, built to understand and benchmark against production vector databases.
 
