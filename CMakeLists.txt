@@ -6,7 +6,11 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(include)
 
 # must precede add_executable: only applies to targets created after it
-add_compile_options($<$<CONFIG:Release>:/O2> $<$<CONFIG:Release>:/arch:AVX2>)
+if(MSVC)
+    add_compile_options($<$<CONFIG:Release>:/O2> $<$<CONFIG:Release>:/arch:AVX2>)
+else()
+    add_compile_options($<$<CONFIG:Release>:-O2> $<$<CONFIG:Release>:-march=native>)
+endif()
 
 add_executable(main src/main.cpp src/hnsw.cpp)
 add_executable(benchmark src/benchmark.cpp src/hnsw.cpp)
