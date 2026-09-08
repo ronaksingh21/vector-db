@@ -6,11 +6,15 @@
 #include <string>
 #include <queue>
 #include <algorithm>
+#include <stdexcept>
 
 //max_count = -1 reads the whole file; otherwise stop early so we don't
 //pull all 1M base vectors into RAM just to index a slice of them
 std::vector<std::vector<float>> load_fvecs(const std::string& filename, int max_count = -1) {
     std::ifstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("load_fvecs: failed to open file: " + filename);
+    }
     std::vector<std::vector<float>> vectors;
 
     int d;
@@ -27,8 +31,11 @@ std::vector<std::vector<float>> load_fvecs(const std::string& filename, int max_
 //load truth file to benchmark
 std::vector<std::vector<int>> load_ivecs(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("load_ivecs: failed to open file: " + filename);
+    }
     std::vector<std::vector<int>> vectors;
-    
+
     int d;
     while (file.read((char*)&d, sizeof(int))) {
         std::vector<int> vec(d);

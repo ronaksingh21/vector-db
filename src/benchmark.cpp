@@ -3,14 +3,28 @@
 #include <chrono>
 #include <iostream>
 #include <set>
+#include <cstdlib>
 //claudus run test for me pls
-int main() {
+int main(int argc, char** argv) {
     const int N_BASE  = 100000;  // corpus size to index
     const int N_QUERY = 100;     // queries to benchmark (brute-force GT costs N_BASE each)
     const int k = 10;
 
-    auto base_vectors  = load_fvecs("C:\\Users\\jatin\\Downloads\\sift_base.fvecs", N_BASE);
-    auto query_vectors = load_fvecs("C:\\Users\\jatin\\Downloads\\sift_query.fvecs", N_QUERY);
+    // Path resolution order: CLI args > env vars > default relative "data/" dir.
+    // Usage: benchmark [base_vectors.fvecs] [query_vectors.fvecs]
+    std::string base_path, query_path;
+    if (argc >= 3) {
+        base_path = argv[1];
+        query_path = argv[2];
+    } else {
+        const char* env_base = std::getenv("SIFT_BASE_PATH");
+        const char* env_query = std::getenv("SIFT_QUERY_PATH");
+        base_path = env_base ? env_base : "data/sift_base.fvecs";
+        query_path = env_query ? env_query : "data/sift_query.fvecs";
+    }
+
+    auto base_vectors  = load_fvecs(base_path, N_BASE);
+    auto query_vectors = load_fvecs(query_path, N_QUERY);
 
     std::cout << "Loaded " << base_vectors.size() << " base vectors\n";
     std::cout << "Loaded " << query_vectors.size() << " query vectors\n";
