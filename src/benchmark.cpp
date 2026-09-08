@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
     const int k = 10;
 
     // Path resolution order: CLI args > env vars > default relative "data/" dir.
-    // Usage: benchmark [base_vectors.fvecs] [query_vectors.fvecs]
+    // Usage: benchmark [base_vectors.fvecs] [query_vectors.fvecs] [max_layers] [M] [ef_construction]
     std::string base_path, query_path;
     if (argc >= 3) {
         base_path = argv[1];
@@ -22,6 +22,20 @@ int main(int argc, char** argv) {
         base_path = env_base ? env_base : "data/sift_base.fvecs";
         query_path = env_query ? env_query : "data/sift_query.fvecs";
     }
+
+    // HNSW build params: CLI args (3rd/4th/5th positional) > env vars > defaults.
+    // Exposed so a sweep script can vary M/ef_construction across runs without recompiling.
+    auto int_param = [](const char* cli_val, const char* env_name, int default_val) {
+        if (cli_val) return std::atoi(cli_val);
+        if (const char* env_val = std::getenv(env_name)) return std::atoi(env_val);
+        return default_val;
+    };
+    int max_layers      = int_param(argc >= 4 ? argv[3] : nullptr, "HNSW_MAX_LAYERS", 16);
+    int M                = int_param(argc >= 5 ? argv[4] : nullptr, "HNSW_M", 5);
+    int ef_construction  = int_param(argc >= 6 ? argv[5] : nullptr, "HNSW_EF_CONSTRUCTION", 200);
+
+    std::cout << "Config: max_layers=" << max_layers << " M=" << M
+               << " ef_construction=" << ef_construction << "\n";
 
     auto base_vectors  = load_fvecs(base_path, N_BASE);
     auto query_vectors = load_fvecs(query_path, N_QUERY);
@@ -41,7 +55,7 @@ int main(int argc, char** argv) {
               << "ms\n\n";
 
     // Build index
-    HNSW index(16, 5, 200);
+    HNSW index(max_layers, M, ef_construction);
     std::cout << "Building index...\n";
     auto start = std::chrono::high_resolution_clock::now();
 
