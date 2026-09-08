@@ -1,10 +1,8 @@
 from flask import Flask, request, jsonify
-import sys
-sys.path.append('../build/Release')  #  .pyd file
-import hnsw_module
+from vector_db import HNSWIndex
 
 app = Flask(__name__)
-index = hnsw_module.HNSW(16, 5, 200)
+index = HNSWIndex(max_layers=16, M=5, ef_construction=200)
 
 @app.route('/insert', methods=['POST'])
 def insert():

@@ -18,3 +18,4 @@ add_executable(benchmark src/benchmark.cpp src/hnsw.cpp)
 # Python bindings
 find_package(pybind11 REQUIRED)
 pybind11_add_module(hnsw_module python/bindings.cpp src/hnsw.cpp)
+install(TARGETS hnsw_module DESTINATION vector_db)

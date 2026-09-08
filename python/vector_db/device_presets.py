@@ -48,7 +48,7 @@ baseline). max_layers is left at the library default (16) for both --
 the sweep did not vary this parameter, so no tuning claim is made for it.
 """
 
-import hnsw_module
+from . import hnsw_module
 
 DEVICE_PRESETS = {
     "raspberry-pi": {"max_layers": 16, "M": 8, "ef_construction": 100},
