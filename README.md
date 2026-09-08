@@ -2,6 +2,7 @@
 
 A from-scratch implementation of Hierarchical Navigable Small World (HNSW) graphs for approximate nearest neighbor search, built to understand and benchmark against production vector databases.
 
+Note: main now ships int8-quantized storage only, optimized for edge/constrained-hardware deployment. The float32 baseline (96.7% recall@10, 4.4-4.9ms latency) is preserved and reproducible at tag v1.0-float32.
 ## What it does
 
 Indexes high-dimensional vectors and finds the k-nearest neighbors to a query vector in sub-linear time, using a multi-layer graph structure for fast approximate search.
