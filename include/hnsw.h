@@ -21,6 +21,10 @@ class HNSW{
         std::vector<int> search(const std::vector<float>& query, int k);
 
         void set_scale_factor(float sf) { scale_factor = sf; }
+
+        // public (not private) so test_distance.cpp can call it directly against a
+        // manually-computed reference value, without a class-internal test hook
+        float l2_distance(const std::vector<int8_t>& a, const std::vector<int8_t>& b);
     private:
         float scale_factor = 1.0f;
         int max_layers;
@@ -39,8 +43,6 @@ class HNSW{
         std::mt19937 rng;
 
         //helpers
-        float l2_distance(const std::vector<int8_t>& a, const std::vector<int8_t>& b);
-
         int get_random_layer();
         // entry_points/return value are internal dense indices, not external ids --
         // traversal stays entirely in index space for cache locality.

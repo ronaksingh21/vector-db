@@ -14,6 +14,7 @@ endif()
 
 add_executable(main src/main.cpp src/hnsw.cpp)
 add_executable(benchmark src/benchmark.cpp src/hnsw.cpp)
+add_executable(test_distance src/test_distance.cpp src/hnsw.cpp)
 
 # Python bindings
 find_package(pybind11 REQUIRED)
