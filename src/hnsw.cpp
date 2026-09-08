@@ -17,7 +17,11 @@ HNSW::HNSW(int max_layers, int M, int ef_construction)
 
 }
 float HNSW::l2_distance(const std::vector<int8_t>& a, const std::vector<int8_t>& b) {
-#ifdef __ARM_NEON
+// FORCE_SCALAR_DISTANCE (define via -DFORCE_SCALAR_DISTANCE) forces the scalar
+// path even on a NEON-capable build, so the exact same binary/dataset can be run
+// twice on the Pi -- once with NEON active, once forced to scalar -- to isolate
+// whether NEON itself is responsible for any recall/self-query instability.
+#if defined(__ARM_NEON) && !defined(FORCE_SCALAR_DISTANCE)
     size_t n = a.size();
     size_t i = 0;
     int32x4_t acc = vdupq_n_s32(0);

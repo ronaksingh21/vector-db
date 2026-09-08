@@ -4,11 +4,31 @@
 #include <iostream>
 #include <set>
 #include <cstdlib>
+
+// compile-time visibility: shows up in the build log so we know the compiler's
+// target/flags actually define __ARM_NEON, before we ever get to runtime
+#ifdef __ARM_NEON
+#pragma message("__ARM_NEON is defined for this build")
+#else
+#pragma message("__ARM_NEON is NOT defined for this build")
+#endif
+
 //claudus run test for me pls
 int main(int argc, char** argv) {
     const int N_BASE  = 100000;  // corpus size to index
     const int N_QUERY = 100;     // queries to benchmark (brute-force GT costs N_BASE each)
     const int k = 10;
+
+    // runtime visibility: printed into the actual run log, so we know for certain
+    // which l2_distance code path this specific run executed -- not just what the
+    // compiler was capable of, but whether FORCE_SCALAR_DISTANCE overrode it too
+#if defined(__ARM_NEON) && !defined(FORCE_SCALAR_DISTANCE)
+    std::cout << "l2_distance path: NEON (__ARM_NEON defined, FORCE_SCALAR_DISTANCE not set)\n";
+#elif defined(__ARM_NEON) && defined(FORCE_SCALAR_DISTANCE)
+    std::cout << "l2_distance path: SCALAR (__ARM_NEON defined, but FORCE_SCALAR_DISTANCE forces scalar)\n";
+#else
+    std::cout << "l2_distance path: SCALAR (__ARM_NEON not defined)\n";
+#endif
 
     // Path resolution order: CLI args > env vars > default relative "data/" dir.
     // Usage: benchmark [base_vectors.fvecs] [query_vectors.fvecs] [max_layers] [M] [ef_construction]
