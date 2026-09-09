@@ -2,7 +2,7 @@
 
 An HNSW vector search implementation in C++ with Python bindings, built and benchmarked with a specific focus other libraries skip: real, measured performance on constrained edge hardware, not just server-class machines.
 
-Most ANN libraries (faiss, hnswlib, annoy) are tuned and benchmarked assuming AVX2, large caches, and server memory budgets. If you're building on-device search for robotics, IoT, or a local-first app running on something like a Raspberry Pi, none of them tell you what to expect. This project does.
+Most ANN libraries (faiss, hnswlib, annoy) are tuned and benchmarked assuming AVX2, large caches, and server memory budgets. If you're building on-device search for robotics, IoT, or a local-first app running on something like a Raspberry Pi, none of them tell you what to expect.
 
 ## Why this exists
 
